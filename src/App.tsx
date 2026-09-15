@@ -273,16 +273,20 @@ const radarQuadrantOf = (task: Task): RadarQuadrant => {
   return task.dueDate <= endOfWeek ? "week" : "later";
 };
 
-const radarRadiusFor = (task: Task, quadrant: RadarQuadrant) => {
+const radarRadiusFor = (task: Task) => {
   const remaining = daysUntil(task.dueDate);
-  const jitter = (stableHash(task.id) % 9) - 4;
-  if (quadrant === "today") {
-    if (remaining < 0) return Math.max(17, 24 + remaining * 2) + jitter * 0.35;
-    return 31 + jitter * 0.45;
+
+  // Radius has one meaning only: deadline proximity / urgency.
+  // Never add per-task jitter here. Tasks with the same due date must sit on
+  // exactly the same range ring; overlap is resolved only by changing angle.
+  if (remaining < 0) {
+    // Older overdue items sit progressively closer to the centre.
+    return Math.max(17, 28 - Math.min(Math.abs(remaining), 6) * 2);
   }
-  if (quadrant === "tomorrow") return 46 + jitter * 0.55;
-  if (quadrant === "week") return Math.min(68, 53 + Math.max(0, remaining - 2) * 3.2) + jitter * 0.45;
-  return Math.min(88, 73 + Math.max(0, remaining - 7) * 0.8) + jitter * 0.35;
+  if (remaining === 0) return 31;
+  if (remaining === 1) return 41;
+  if (remaining <= 7) return 49 + (remaining - 2) * 3.8;
+  return Math.min(88, 72 + (remaining - 7) * 0.8);
 };
 
 const buildRadarPoints = (tasks: Task[]): RadarPoint[] => {
@@ -311,7 +315,7 @@ const buildRadarPoints = (tasks: Task[]): RadarPoint[] => {
       const base = startAngle + span * ((index + 1) / (group.length + 1));
       const angleJitter = ((stableHash(`${task.id}-angle`) % 1000) / 1000 - 0.5) * Math.min(8, span / Math.max(3, group.length));
       const angle = (base + angleJitter) * Math.PI / 180;
-      const radius = radarRadiusFor(task, quadrant);
+      const radius = radarRadiusFor(task);
       result.push({
         task,
         quadrant,
@@ -353,10 +357,15 @@ const buildRadarMarkers = (points: RadarPoint[]): RadarMarker[] => {
   const markers: RadarMarker[] = [];
   byDate.forEach((group, key) => {
     if (group.length >= 3) {
-      const x = group.reduce((sum, point) => sum + point.x, 0) / group.length;
-      const y = group.reduce((sum, point) => sum + point.y, 0) / group.length;
-      const representative = [...group].sort((a, b) => daysUntil(a.task.dueDate) - daysUntil(b.task.dueDate))[0];
-      const angleDeg = (Math.atan2(y - 50, x - 50) * 180 / Math.PI + 360) % 360;
+      const representative = [...group].sort((a, b) => a.task.id.localeCompare(b.task.id))[0];
+      // Every point in this group has the same due date and therefore the same
+      // radius. Keep that radius when clustering; averaging x/y would pull the
+      // marker inward and falsely imply a higher urgency.
+      const angleDeg = group.reduce((sum, point) => sum + point.angleDeg, 0) / group.length;
+      const angle = angleDeg * Math.PI / 180;
+      const radius = representative.radius;
+      const x = 50 + Math.cos(angle) * radius * 0.48;
+      const y = 50 + Math.sin(angle) * radius * 0.48;
       markers.push({ id: `cluster-${key}`, points: group, x, y, angleDeg, quadrant: representative.quadrant, representative });
       return;
     }
@@ -1004,7 +1013,7 @@ function RadarView({ tasks, onEdit, onOpenAll }: {
         <div>
           <p className="radar-kicker">LIVE TASK SCAN</p>
           <h2>課題の接近状況</h2>
-          <p>近い予定ほど中心へ。たまるほど信号が強くなります。</p>
+          <p>象限で時期を確認。同じ象限では、中心に近いほど期限が迫っています。</p>
         </div>
         <button type="button" className={`radar-status-pill ${risk}`} onClick={onOpenAll}>
           <span className="radar-status-light" />
@@ -1085,8 +1094,8 @@ function RadarView({ tasks, onEdit, onOpenAll }: {
         <div className="radar-alert-row">
           <div className={`radar-alert-icon ${risk}`}>!</div>
           <div className="radar-alert-copy">
-            <strong>中心に近いほど要注意</strong>
-            <span>走査線が通過すると対象信号が強く光ります</span>
+            <strong>同じ期限は、同じ距離</strong>
+            <span>中心に近いほど期限が迫る／過ぎているため要注意です</span>
           </div>
           <button type="button" className={`radar-attention-button ${risk}`} onClick={onOpenAll}>
             {riskLabel}<span>›</span>
