@@ -1,0 +1,19 @@
+{
+  "name": "課題レーダー",
+  "short_name": "課題レーダー",
+  "description": "時間割とガントで課題を管理し、レーダーで課題の接近と重なりをひと目で確認する中学生向けWebアプリ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#f4f7fb",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "scope": "./"
+}
