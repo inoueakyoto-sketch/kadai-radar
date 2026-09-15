@@ -1,4 +1,4 @@
-const CACHE = "kadai-radar-v0.6.4";
+const CACHE = "kadai-radar-v0.6.5";
 
 const scopedUrl = (path = "") => new URL(path, self.registration.scope).href;
 const SHELL = [scopedUrl(""), scopedUrl("manifest.webmanifest"), scopedUrl("icon.svg")];
