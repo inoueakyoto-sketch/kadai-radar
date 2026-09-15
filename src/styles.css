@@ -435,3 +435,15 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .radar-cluster.has-in-progress { outline:2px solid #7df6d7; outline-offset:3px; }
 .radar-cluster-progress { position:absolute; right:-6px; top:-6px; display:grid; width:14px; height:14px; place-items:center; border-radius:50%; color:#062c27; background:#7df6d7; font-size:7px; font-weight:950; }
 .legend-progress-radar { display:inline-grid; width:17px; height:17px; place-items:center; border:1px solid #7df6d7; border-radius:50%; color:#082d27; background:#7df6d7; font-style:normal; font-size:8px; font-weight:950; }
+
+
+/* v0.6.6: boot/runtime recovery */
+.fatal-screen { min-height:100vh; display:grid; place-items:center; padding:22px; background:#f4f7fb; color:#0f172a; }
+.fatal-card { width:min(100%,420px); border:1px solid #dfe6ef; border-radius:24px; padding:22px; background:#fff; box-shadow:0 20px 50px rgba(15,23,42,.10); }
+.fatal-eyebrow { margin:0 0 6px; color:#2563eb; font-size:11px; font-weight:950; letter-spacing:.08em; }
+.fatal-card h1 { margin:0 0 10px; font-size:22px; letter-spacing:-.03em; }
+.fatal-card p { color:#64748b; font-size:13px; line-height:1.65; }
+.fatal-card button { width:100%; min-height:50px; margin-top:10px; border:0; border-radius:16px; color:#fff; background:#17263f; font-weight:900; }
+.fatal-card .fatal-secondary { border:1px solid #dbe3ee; color:#40506a; background:#f8fafc; }
+.fatal-card details { margin-top:14px; color:#64748b; font-size:11px; }
+.fatal-card code { display:block; margin-top:8px; padding:10px; overflow-wrap:anywhere; border-radius:10px; background:#f1f5f9; color:#334155; }
