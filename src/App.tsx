@@ -142,6 +142,8 @@ const taskLabelOf = (task: Task) => {
   return type ? TASK_TYPE_LABELS[type] : task.title;
 };
 const taskDisplayOf = (task: Task) => `${courseNameOf(task)}｜${taskLabelOf(task)}`;
+const workStateOf = (task: Task) => task.workState ?? "notStarted";
+const isTaskInProgress = (task: Task) => !task.completed && workStateOf(task) === "inProgress";
 
 const repeatLabel = (frequency?: RepeatFrequency) => {
   if (frequency === "weekly") return "毎週";
@@ -456,6 +458,9 @@ function App() {
     const pending = tasks.filter(isRecommendationCandidate);
     return [...pending]
       .sort((a, b) => {
+        const progressA = isTaskInProgress(a) ? 0 : 1;
+        const progressB = isTaskInProgress(b) ? 0 : 1;
+        if (progressA !== progressB) return progressA - progressB;
         const dayA = daysUntil(a.dueDate);
         const dayB = daysUntil(b.dueDate);
         if (dayA !== dayB) return dayA - dayB;
@@ -468,6 +473,7 @@ function App() {
     const taskBodies = drafts.map((draft) => ({
       ...draft,
       completed: false,
+      workState: "notStarted" as const,
       source: "manual" as const
     }));
 
@@ -491,14 +497,40 @@ function App() {
     window.setTimeout(() => setMessage(""), 1600);
   };
 
-  const setCompleted = async (task: Task, completed: boolean) => {
+  const setWorkState = async (task: Task, workState: "notStarted" | "inProgress") => {
     setTasks((current) =>
-      current.map((item) => (item.id === task.id ? { ...item, completed } : item))
+      current.map((item) =>
+        item.id === task.id
+          ? { ...item, completed: false, workState }
+          : item
+      )
     );
   };
 
+  const startTask = async (task: Task) => {
+    await setWorkState(task, "inProgress");
+  };
+
+  const keepTaskInProgress = async (task: Task) => {
+    await setWorkState(task, "inProgress");
+    setMessage("途中として残しました");
+    window.setTimeout(() => setMessage(""), 1400);
+  };
+
+  const cancelTaskStart = async (task: Task) => {
+    await setWorkState(task, "notStarted");
+    setMessage("未着手に戻しました");
+    window.setTimeout(() => setMessage(""), 1400);
+  };
+
   const completeTask = async (task: Task) => {
-    await setCompleted(task, true);
+    setTasks((current) =>
+      current.map((item) =>
+        item.id === task.id
+          ? { ...item, completed: true, workState: "notStarted" }
+          : item
+      )
+    );
     setUndoTask(task);
     window.setTimeout(() => {
       setUndoTask((current) => (current?.id === task.id ? null : current));
@@ -509,7 +541,13 @@ function App() {
     if (!undoTask) return;
     const task = undoTask;
     setUndoTask(null);
-    await setCompleted(task, false);
+    setTasks((current) =>
+      current.map((item) =>
+        item.id === task.id
+          ? { ...item, completed: false, workState: task.workState ?? "notStarted" }
+          : item
+      )
+    );
   };
 
   const updateTask = async (
@@ -568,7 +606,7 @@ function App() {
     const exportedAt = new Date().toISOString();
     const bundle: BackupBundle = {
       format: BACKUP_FORMAT,
-      appVersion: "0.6.2",
+      appVersion: "0.6.5",
       exportedAt,
       tasks,
       timetable
@@ -633,7 +671,10 @@ function App() {
           <TodayView
             tasks={recommendations}
             crowdedDate={nextCrowdedDate}
+            onStart={startTask}
             onComplete={completeTask}
+            onKeepInProgress={keepTaskInProgress}
+            onCancelStart={cancelTaskStart}
             onEdit={setEditingTask}
             onOpenAll={() => setView("all")}
           />
@@ -718,16 +759,23 @@ function ScreenTitle({ title, subtitle, action }: { title: string; subtitle: str
 function TodayView({
   tasks,
   crowdedDate,
+  onStart,
   onComplete,
+  onKeepInProgress,
+  onCancelStart,
   onEdit,
   onOpenAll
 }: {
   tasks: Task[];
   crowdedDate: { key: string; count: number } | null;
+  onStart: (task: Task) => void;
   onComplete: (task: Task) => void;
+  onKeepInProgress: (task: Task) => void;
+  onCancelStart: (task: Task) => void;
   onEdit: (task: Task) => void;
   onOpenAll: () => void;
 }) {
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const first = tasks[0];
   const later = tasks.slice(1);
   return (
@@ -750,12 +798,38 @@ function TodayView({
       ) : (
         <>
           <div className="section-heading"><h3>まずこれ</h3></div>
-          <TaskCard task={first} primary onComplete={onComplete} onEdit={onEdit} />
+          <TaskCard
+            task={first}
+            primary
+            active={activeTaskId === first.id}
+            onActivate={() => {
+              if (!isTaskInProgress(first)) onStart(first);
+              setActiveTaskId(first.id);
+            }}
+            onComplete={() => { onComplete(first); setActiveTaskId(null); }}
+            onKeepInProgress={() => { onKeepInProgress(first); setActiveTaskId(null); }}
+            onCancelStart={() => { onCancelStart(first); setActiveTaskId(null); }}
+            onEdit={onEdit}
+          />
           {later.length > 0 && (
             <>
               <div className="section-heading secondary-heading"><h3>余裕があったら</h3><span>あと{later.length}つ</span></div>
               <div className="task-stack">
-                {later.map((task) => <TaskCard key={task.id} task={task} onComplete={onComplete} onEdit={onEdit} />)}
+                {later.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    active={activeTaskId === task.id}
+                    onActivate={() => {
+                      if (!isTaskInProgress(task)) onStart(task);
+                      setActiveTaskId(task.id);
+                    }}
+                    onComplete={() => { onComplete(task); setActiveTaskId(null); }}
+                    onKeepInProgress={() => { onKeepInProgress(task); setActiveTaskId(null); }}
+                    onCancelStart={() => { onCancelStart(task); setActiveTaskId(null); }}
+                    onEdit={onEdit}
+                  />
+                ))}
               </div>
             </>
           )}
@@ -766,29 +840,49 @@ function TodayView({
   );
 }
 
-function TaskCard({ task, primary = false, onComplete, onEdit }: {
+function TaskCard({
+  task,
+  primary = false,
+  active,
+  onActivate,
+  onComplete,
+  onKeepInProgress,
+  onCancelStart,
+  onEdit
+}: {
   task: Task;
   primary?: boolean;
-  onComplete: (task: Task) => void;
+  active: boolean;
+  onActivate: () => void;
+  onComplete: () => void;
+  onKeepInProgress: () => void;
+  onCancelStart: () => void;
   onEdit: (task: Task) => void;
 }) {
-  const kind = taskKind(task);
-  const canCompleteTest = kind !== "test" || daysUntil(task.dueDate) <= 0;
+  const inProgress = isTaskInProgress(task);
   return (
-    <article className={`task-card ${primary ? "primary-task-card" : ""} ${subjectClass(task.subject)}`}>
+    <article className={`task-card ${primary ? "primary-task-card" : ""} ${inProgress ? "task-card-in-progress" : ""} ${subjectClass(task.subject)}`}>
       <div className="task-card-top">
         <div className="task-card-meta-left">
           <span className={`subject-badge ${subjectClass(task.subject)}`}>{courseNameOf(task)}</span>
           {task.repeatFrequency && <span className="repeat-badge">↻ {repeatLabel(task.repeatFrequency)}</span>}
+          {inProgress && <span className="progress-badge">▶ 途中</span>}
         </div>
         <button type="button" className="inline-edit-button" onClick={() => onEdit(task)}>修正</button>
       </div>
       <h3>{taskLabelOf(task)}</h3>
       <div className="task-due-row"><strong>{dueLabel(task)}</strong></div>
-      {canCompleteTest ? (
-        <button type="button" className="done-button" onClick={() => onComplete(task)}>✓ {kind === "test" ? "終わった" : "できた"}</button>
+
+      {!active ? (
+        <button type="button" className={`start-button ${inProgress ? "resume" : ""}`} onClick={onActivate}>
+          ▶ {inProgress ? "つづきからする" : "いまからする"}
+        </button>
       ) : (
-        <div className="test-reminder">当日まで予定に残します</div>
+        <div className="work-actions" aria-label="取り組み状況を選ぶ">
+          <button type="button" className="work-action-complete" onClick={onComplete}>✓ できた</button>
+          <button type="button" className="work-action-pause" onClick={onKeepInProgress}>… まだ途中</button>
+          <button type="button" className="work-action-cancel" onClick={onCancelStart}>× やっぱりやめた</button>
+        </div>
       )}
     </article>
   );
@@ -841,6 +935,7 @@ function AllView({ tasks, showCompleted, onShowCompleted, onEdit }: {
         <span><i className="legend-bar" />単発課題</span>
         <span><i className="legend-routine">●</i>ルーティン提出</span>
         <span><i className="legend-routine">★</i>ルーティン小テスト</span>
+        <span><i className="legend-progress">▶</i>途中</span>
       </div>
       <Gantt tasks={filtered} dueCounts={dueCounts} start={weekStart} emptyText={`${filter}の課題はありません`} onEdit={onEdit} />
       <CompletedToggle checked={showCompleted} onChange={onShowCompleted} />
@@ -902,11 +997,12 @@ function Gantt({ tasks, dueCounts, start, emptyText = "表示する課題があ�
                   <button
                     type="button"
                     key={task.id}
-                    className={`routine-day-chip ${subjectClass(task.subject)} ${taskKind(task) === "test" ? "routine-day-chip-test" : ""}`}
+                    className={`routine-day-chip ${subjectClass(task.subject)} ${taskKind(task) === "test" ? "routine-day-chip-test" : ""} ${isTaskInProgress(task) ? "is-in-progress" : ""}`}
                     onClick={() => onEdit(task)}
                     title={taskDisplayOf(task)}
                   >
                     <span>{taskKind(task) === "test" ? "★" : "●"}</span>
+                    {isTaskInProgress(task) && <span className="routine-progress-mark">▶</span>}
                     <span>{courseShortOf(task)}</span>
                   </button>
                 ))}
@@ -941,12 +1037,14 @@ function Gantt({ tasks, dueCounts, start, emptyText = "表示する課題があ�
             {startIndex >= 0 && endIndex >= 0 && (
               <button
                 type="button"
-                className={`gantt-bar gantt-bar-button ${subjectClass(task.subject)}`}
+                className={`gantt-bar gantt-bar-button ${subjectClass(task.subject)} ${isTaskInProgress(task) ? "is-in-progress" : ""}`}
                 style={{ gridColumn: `${startIndex + 1} / ${endIndex + 2}` }}
                 onClick={() => onEdit(task)}
                 title={taskDisplayOf(task)}
               >
-                <span className="gantt-bar-text">{taskDisplayOf(task)}</span><span className="due-dot" />
+                <span className="gantt-bar-text">{isTaskInProgress(task) ? "▶ " : ""}{taskDisplayOf(task)}</span>
+                {isTaskInProgress(task) && <span className="gantt-progress-badge">途中</span>}
+                <span className="due-dot" />
               </button>
             )}
           </div>
@@ -1064,12 +1162,13 @@ function RadarView({ tasks, onEdit, onOpenAll }: {
                   <button
                     type="button"
                     key={marker.id}
-                    className={`radar-cluster ${radarUrgencyClass(task)}`}
+                    className={`radar-cluster ${radarUrgencyClass(task)} ${marker.points.some((item) => isTaskInProgress(item.task)) ? "has-in-progress" : ""}`}
                     style={{ left: `${marker.x}%`, top: `${marker.y}%`, "--scan-delay": radarSweepDelay(marker.angleDeg, radarTimelineNow) } as CSSProperties}
                     onClick={onOpenAll}
                     aria-label={`${formatMD(task.dueDate)}に${marker.points.length}件。全体を開く`}
                     title={`${formatMD(task.dueDate)}｜${marker.points.length}件`}
                   >
+                    {marker.points.some((item) => isTaskInProgress(item.task)) && <span className="radar-cluster-progress">▶</span>}
                     +{marker.points.length}
                   </button>
                 );
@@ -1078,13 +1177,14 @@ function RadarView({ tasks, onEdit, onOpenAll }: {
                 <button
                   type="button"
                   key={marker.id}
-                  className={`radar-target ${radarTargetClass(task)} ${subjectClass(task.subject)} ${radarUrgencyClass(task)}`}
+                  className={`radar-target ${radarTargetClass(task)} ${subjectClass(task.subject)} ${radarUrgencyClass(task)} ${isTaskInProgress(task) ? "is-in-progress" : ""}`}
                   style={{ left: `${marker.x}%`, top: `${marker.y}%`, "--scan-delay": radarSweepDelay(marker.angleDeg, radarTimelineNow) } as CSSProperties}
                   onClick={() => onEdit(task)}
                   aria-label={`${taskDisplayOf(task)} ${dueLabel(task)}。タップして修正`}
                   title={`${taskDisplayOf(task)}｜${dueLabel(task)}`}
                 >
                   {task.repeatFrequency ? <span className="radar-target-core" /> : taskTypeOf(task) === "test" ? "★" : <span className="radar-target-core" />}
+                  {isTaskInProgress(task) && <span className="radar-progress-indicator" aria-hidden="true">▶</span>}
                 </button>
               );
             })}
@@ -1119,6 +1219,7 @@ function RadarView({ tasks, onEdit, onOpenAll }: {
             <span><i className="legend-star">★</i>小テスト</span>
             <span><i className="legend-dot" />ルーティン</span>
             <span><i className="legend-cluster">+3</i>密集</span>
+            <span><i className="legend-progress-radar">▶</i>途中</span>
           </div>
         </div>
       </div>

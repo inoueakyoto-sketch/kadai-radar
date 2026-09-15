@@ -3,6 +3,7 @@ export type TaskSource = "manual" | "screenshot";
 export type TaskKind = "assignment" | "test";
 export type TaskType = "homework" | "submission" | "test";
 export type RepeatFrequency = "weekly" | "biweekly" | "monthly";
+export type WorkState = "notStarted" | "inProgress";
 
 export type Course = {
   id: string;
@@ -36,6 +37,8 @@ export type Task = {
   repeatSeriesId?: string;
   repeatFrequency?: RepeatFrequency;
   repeatIndex?: number;
+  /** User has started this task but has not finished it yet. */
+  workState?: WorkState;
 };
 
 export type TaskDraft = Omit<Task, "id" | "createdAt" | "completed" | "source">;

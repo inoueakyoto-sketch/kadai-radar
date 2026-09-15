@@ -75,6 +75,17 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .inline-edit-button { min-height: 34px; border: 1px solid var(--line); border-radius: 999px; padding: 0 10px; background: #fff; color: #536378; font-size: 10px; font-weight: 900; }
 .done-button, .save-button { width: 100%; min-height: 54px; border: 0; border-radius: 17px; background: linear-gradient(180deg,#223653,#162641); color: #fff; font-weight: 950; box-shadow: 0 10px 24px rgba(22,38,65,.18); }
 .done-button:active, .save-button:active, .nav-button:active { transform: scale(.985); }
+.task-card-in-progress { border-color: rgba(38, 181, 146, .34); box-shadow: 0 12px 30px rgba(20, 115, 94, .11); }
+.progress-badge { display:inline-flex; align-items:center; min-height:27px; padding:0 10px; border-radius:999px; color:#0a765f; background:#ddf8ef; font-size:11px; font-weight:950; }
+.start-button { width:100%; min-height:54px; border:0; border-radius:17px; color:#fff; background:linear-gradient(180deg,#2367e8 0%,#194fc1 100%); box-shadow:0 10px 24px rgba(35,103,232,.20); font-weight:950; }
+.start-button.resume { background:linear-gradient(180deg,#149a7e 0%,#0b765f 100%); box-shadow:0 10px 24px rgba(11,118,95,.20); }
+.start-button:active, .work-actions button:active { transform:scale(.985); }
+.work-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.work-actions button { min-height:50px; border-radius:16px; font-size:12px; font-weight:950; }
+.work-action-complete { grid-column:1 / -1; border:0; color:#fff; background:linear-gradient(180deg,#223653,#162641); box-shadow:0 8px 20px rgba(22,38,65,.16); }
+.work-action-pause { border:1px solid #bce9dd; color:#0b765f; background:#eafaf5; }
+.work-action-cancel { border:1px solid #dde3ec; color:#596579; background:#f8fafc; }
+
 .save-button:disabled { opacity: .42; box-shadow: none; cursor: default; }
 .test-reminder { min-height: 46px; display: grid; place-items: center; border-radius: 15px; background: #f1f4f8; color: #607087; font-size: 11px; font-weight: 850; }
 .quiet-button { width: 100%; min-height: 50px; border: 1px solid var(--line-strong); border-radius: 17px; background: rgba(255,255,255,.9); color: #3d4f69; font-weight: 900; box-shadow: var(--shadow-sm); }
@@ -409,3 +420,18 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px s
 .backup-card > small { color: var(--muted); font-size: 10px; }
 .backup-note { margin: -3px 0 0; color: var(--muted-2); font-size: 10px; line-height: 1.55; }
 @media (max-width: 380px) { .backup-actions { grid-template-columns: 1fr; } }
+
+/* v0.6.5: in-progress task state */
+.legend-progress { display:inline-grid; min-width:15px; place-items:center; color:#0d8d72; font-style:normal; font-weight:950; }
+.routine-day-chip.is-in-progress { box-shadow:0 0 0 2px #8ff2d8, 0 4px 12px rgba(15,118,95,.16); }
+.routine-progress-mark { color:#dffcf5; font-size:8px; line-height:1; }
+.gantt-bar.is-in-progress { box-shadow:0 0 0 2px #8ff2d8,0 5px 13px rgba(15,118,95,.18); background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.13) 0 7px,rgba(255,255,255,0) 7px 14px); }
+.gantt-progress-badge { position:absolute; right:13px; top:50%; transform:translateY(-50%); display:inline-flex; align-items:center; min-height:14px; padding:0 4px; border-radius:999px; color:#075e4d; background:#c9f4e8; font-size:7px; font-weight:950; }
+.gantt-bar.is-in-progress .gantt-bar-text { padding-right:26px; }
+.gantt-bar.is-in-progress .due-dot { right:2px; }
+.radar-target.is-in-progress { outline:2px solid #7df6d7; outline-offset:4px; }
+.radar-target.is-in-progress::after { border-color:#7df6d7; opacity:.88; }
+.radar-progress-indicator { position:absolute; z-index:12; right:-9px; top:-9px; display:grid; width:15px; height:15px; place-items:center; border:1px solid rgba(255,255,255,.9); border-radius:50%; color:#062c27; background:#7df6d7; box-shadow:0 0 10px rgba(125,246,215,.9); font-size:7px; line-height:1; font-weight:950; pointer-events:none; }
+.radar-cluster.has-in-progress { outline:2px solid #7df6d7; outline-offset:3px; }
+.radar-cluster-progress { position:absolute; right:-6px; top:-6px; display:grid; width:14px; height:14px; place-items:center; border-radius:50%; color:#062c27; background:#7df6d7; font-size:7px; font-weight:950; }
+.legend-progress-radar { display:inline-grid; width:17px; height:17px; place-items:center; border:1px solid #7df6d7; border-radius:50%; color:#082d27; background:#7df6d7; font-style:normal; font-size:8px; font-weight:950; }
